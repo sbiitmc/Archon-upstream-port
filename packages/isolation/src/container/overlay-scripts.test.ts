@@ -6,7 +6,9 @@
  *
  * Portable subset (runs on macOS + Linux): whiteout-name traversal, setuid
  * stripping, special-file skip, symlink escape/representation, symlink-to-dir,
- * dest-symlink traversal. Char-device (0,0) whiteout detection needs `mknod` (root)
+ * dest-symlink traversal. These are POSIX semantics — whiteout names and
+ * setuid/setgid/sticky bits have no Windows equivalent — so the cases that
+ * assert them are skipped on win32, same as the symlink cases below. Char-device (0,0) whiteout detection needs `mknod` (root)
  * and is exercised by the live in-container malicious-overlay smoke instead.
  */
 import { describe, test, expect } from 'bun:test';
@@ -94,7 +96,7 @@ function makeDirs(): { root: string; upper: string; dest: string; ws: string } {
 }
 
 describe('apply script — C1 whiteout-name traversal', () => {
-  test('`.wh.` (empty decoded name) does NOT wipe the parent dir', () => {
+  test.skipIf(isWin)('`.wh.` (empty decoded name) does NOT wipe the parent dir', () => {
     const { root, upper, dest, ws } = makeDirs();
     mkdirSync(join(upper, 'subdir'), { recursive: true });
     writeFileSync(join(upper, 'subdir', '.wh.'), ''); // malicious: decodes to empty name
@@ -107,7 +109,7 @@ describe('apply script — C1 whiteout-name traversal', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  test('`.wh...` (decoded name `..`) does NOT rm the parent-of-parent', () => {
+  test.skipIf(isWin)('`.wh...` (decoded name `..`) does NOT rm the parent-of-parent', () => {
     const { root, upper, dest, ws } = makeDirs();
     writeFileSync(join(upper, '.wh...'), ''); // decodes to '..'
     const canary = join(dest, 'canary.txt');
@@ -120,7 +122,7 @@ describe('apply script — C1 whiteout-name traversal', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  test('a legit `.wh.<name>` whiteout deletes exactly that file', () => {
+  test.skipIf(isWin)('a legit `.wh.<name>` whiteout deletes exactly that file', () => {
     const { root, upper, dest, ws } = makeDirs();
     writeFileSync(join(upper, '.wh.gone.txt'), '');
     writeFileSync(join(dest, 'gone.txt'), 'bye');
@@ -135,7 +137,7 @@ describe('apply script — C1 whiteout-name traversal', () => {
 });
 
 describe('apply script — C2 special files + setuid', () => {
-  test('setuid/setgid/sticky bits are stripped from applied files', () => {
+  test.skipIf(isWin)('setuid/setgid/sticky bits are stripped from applied files', () => {
     const { root, upper, dest, ws } = makeDirs();
     const src = join(upper, 'tool');
     writeFileSync(src, '#!/bin/sh\n');
