@@ -39,6 +39,13 @@ services:
   app:
     build: .
     image: archon
+    # Reap orphaned grandchildren. Without an init process `bun run start` is PID 1,
+    # and git processes spawned by the agent CLIs are reparented to it when their
+    # agent exits. No JS runtime waitpid()s a process it did not spawn, so every
+    # orphan sticks as a zombie: we measured 824 of 828 processes after 14 days,
+    # with the healthcheck green throughout. Reproduced 40/40 without init, 0/40
+    # with it, and unchanged by a Bun version bump.
+    init: true
     env_file: .env
     environment:
       ARCHON_DOCKER: "true"
